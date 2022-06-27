@@ -1,0 +1,94 @@
+---
+title: "AIM 1 Stop Gained full script"
+author: "rawandb"
+date: '2022-06-27'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+
+#change dataframe into tibble 
+```{r}
+library(tidyverse)
+homozygous_variants_bcf1<- as_tibble(homozygous_variants_bcf)
+
+```
+
+#rename the column names 
+```{r}
+names(homozygous_variants_bcf1) <- c("chr", "pos", "ref", "alt", "allele", "consequence", "change", "gene", "AC", 1:39)
+```
+
+#convert position column from integer to character 
+```{r}
+homozygous_variants_bcf1$pos <- as.character(homozygous_variants_bcf1$pos)
+```
+
+
+#convert from wide file to long file 
+```{r}
+homozygous_variants_long <- homozygous_variants_bcf1 %>%
+  tidyr::pivot_longer(
+  cols = `1`:`1939`,
+  names_to = "Sample_ID",
+  values_to = "Genotype"
+)
+ 
+```
+
+
+#filter for stop gain variants only 
+```{r}
+filtered_stop_gained <- filter(homozygous_variants_long, consequence == "stop_gained")
+```
+
+
+#filter for homozygous variants (1/1)
+```{r}
+filtered_stop_gained_Hom <- filter(filtered_stop_gained, Genotype=="1/1") 
+```
+
+#summarise by gene 
+```{r}
+Stop_gain_summary <- filtered_stop_gained_Hom %>% 
+  group_by(gene) %>% 
+  summarise(n = n()) 
+```
+
+#upload OMIM dataframe onto R
+```{r}
+OMIM <- read.csv("~/Downloads/OMIM.csv", header=FALSE, sep = ",")
+```
+
+#merge OMIM dataframe and stop_gain dataframe 
+```{r}
+stop_gain_omim <- merge(OMIM, Stop_gain_summary, by=c("gene"), all=TRUE) 
+```
+
+#download merged table onto computer as a comma seperated values file 
+```{r}
+write.table(stop_gain_omim, file = "stop_gain_counts_omim.csv", sep = ",")
+```
